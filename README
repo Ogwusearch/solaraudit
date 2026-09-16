@@ -1,0 +1,1068 @@
+# SolarAudit
+
+**Solar Energy Audit & Engineering Platform**
+
+SolarAudit is an engineering-first platform for solar power auditing and system sizing. It turns site and load information into structured electrical calculations, equipment selections, project records, and reproducible engineering reports.
+
+The platform is built on a strict separation of concerns:
+
+```text
+User Interface
+      │
+      ▼
+Application Services
+      │
+      ▼
+Engineering Calculation Engine
+      │
+      ▼
+Validation / Rules
+      │
+      ▼
+Persistence
+      │
+      ▼
+Reports / Audit Results
+```
+
+The engineering engine has **no dependency on the UI or the database**, so calculations can be tested in isolation, reused across clients, and executed from multiple APIs.
+
+---
+
+## Table of Contents
+
+1. [Objectives](#1-objectives)
+2. [Engineering Engines](#2-engineering-engines)
+3. [API Surface](#3-api-surface)
+4. [Load Audit](#4-load-audit)
+5. [Energy Analysis](#5-energy-analysis)
+6. [Solar PV Sizing](#6-solar-pv-sizing)
+7. [Battery Sizing](#7-battery-sizing)
+8. [Inverter Sizing](#8-inverter-sizing)
+9. [Cable Sizing](#9-cable-sizing)
+10. [Voltage Drop](#10-voltage-drop)
+11. [Charge Controller Sizing](#11-charge-controller-sizing)
+12. [Protection Sizing](#12-protection-sizing)
+13. [Bill of Materials](#13-bill-of-materials)
+14. [Costing](#14-costing)
+15. [Engineering Validation](#15-engineering-validation)
+16. [Dashboard](#16-dashboard)
+17. [Frontend Architecture](#17-frontend-architecture)
+18. [Engineering / UI Separation](#18-engineering--ui-separation)
+19. [Backend Architecture](#19-backend-architecture)
+20. [Data Model](#20-data-model)
+21. [Audit Traceability](#21-audit-traceability)
+22. [Calculation Result Format](#22-calculation-result-format)
+23. [Units](#23-units)
+24. [Design Margins](#24-design-margins)
+25. [Testing Strategy](#25-testing-strategy)
+26. [Project Structure](#26-project-structure)
+27. [Development Workflow](#27-development-workflow)
+28. [Implementation Sequence](#28-implementation-sequence)
+29. [Future Expansion](#29-future-expansion)
+30. [Engineering Principle](#30-engineering-principle)
+31. [Project Status](#31-project-status)
+
+---
+
+## 1. Objectives
+
+SolarAudit supports the full lifecycle of a solar installation assessment, from field data collection to a signed-off engineering report.
+
+```text
+Client
+  │
+  ▼
+Project
+  │
+  ▼
+Site / Load Audit
+  │
+  ▼
+Energy Analysis
+  │
+  ├── Load Calculation
+  ├── Daily Energy
+  ├── Peak / Connected Load
+  └── Essential Load
+  │
+  ▼
+System Sizing
+  │
+  ├── Solar PV
+  ├── Battery
+  ├── Inverter
+  ├── Charge Controller
+  ├── Cable
+  └── Protection
+  │
+  ▼
+Engineering Validation
+  │
+  ▼
+Bill of Materials
+  │
+  ▼
+Engineering Report
+```
+
+---
+
+## 2. Engineering Engines
+
+The calculation layer is divided into independent, composable domains:
+
+```text
+Engineering Engine
+│
+├── load
+├── energy
+├── solar
+├── battery
+├── inverter
+├── cable
+├── voltage-drop
+├── charge-controller
+├── protection
+├── bom
+├── costing
+├── report
+├── units
+├── constants
+└── validation
+```
+
+Every engine exposes an explicit contract:
+
+- **Inputs** — typed, validated
+- **Assumptions** — documented, versioned
+- **Calculations** — pure, side-effect-free
+- **Outputs** — structured result object
+- **Warnings / Errors** — non-throwing, collected
+
+---
+
+## 3. API Surface
+
+Each engine is reachable through a dedicated endpoint:
+
+```text
+POST /api/load/calculate
+POST /api/energy/analyze
+POST /api/solar/size
+POST /api/battery/size
+POST /api/inverter/size
+POST /api/cable/size
+POST /api/protection/size
+```
+
+The API layer is intentionally thin — it maps HTTP requests to engine calls and returns results. No engineering logic lives here.
+
+```text
+                    REST API
+                       │
+        ┌──────────────┼──────────────┐
+        │              │              │
+        ▼              ▼              ▼
+      Load           Solar         Battery
+     Engine          Engine         Engine
+        │              │              │
+        └──────────────┼──────────────┘
+                       │
+                 Validation
+                       │
+                       ▼
+                  Calculation
+                       │
+                       ▼
+                    Result
+```
+
+---
+
+## 4. Load Audit
+
+The load audit is the foundation of every sizing decision.
+
+**Each load item captures:**
+
+```text
+Load Name
+Quantity
+Rated Power
+Operating Hours
+Usage Pattern
+Load Type
+Power Factor
+Diversity Factor
+Essential / Non-essential
+```
+
+**Example:**
+
+```text
+Television
+Quantity:     1
+Power:        120 W
+Hours/day:    5
+Essential:    Yes
+```
+
+**The load engine determines:**
+
+```text
+Connected Load
+Running Load
+Diversified Load
+Daily Energy
+Essential Load
+Peak Demand
+```
+
+---
+
+## 5. Energy Analysis
+
+The energy engine aggregates loads into daily system requirements.
+
+**Typical outputs:**
+
+```text
+Total connected load
+Diversified load
+Daily energy consumption
+Essential daily energy
+Peak demand
+Average operating load
+Estimated battery energy requirement
+Estimated PV energy requirement
+```
+
+Every result preserves its underlying assumptions so any number can be traced back to its inputs.
+
+---
+
+## 6. Solar PV Sizing
+
+The solar engine sizes the PV array from the daily energy requirement.
+
+**Inputs:**
+
+```text
+Daily energy requirement
+Peak sun hours
+System efficiency
+Temperature / environmental derating
+Design margin
+Panel rated power
+Panel operating voltage
+Panel current
+Series panel count
+Parallel string count
+```
+
+**Flow:**
+
+```text
+Daily Energy
+     │
+     ▼
+PV Energy Requirement
+     │
+     ▼
+PV Array Power
+     │
+     ▼
+Panel Selection
+     │
+     ├── Series
+     └── Parallel
+     │
+     ▼
+Final PV Array
+```
+
+The result reports both the **calculated requirement** and the **selected practical configuration**.
+
+---
+
+## 7. Battery Sizing
+
+The battery engine sizes storage based on autonomy and daily energy.
+
+**Inputs:**
+
+```text
+Daily energy
+Backup autonomy
+System voltage
+Depth of discharge
+Battery efficiency
+Temperature derating
+Design margin
+Battery capacity
+Battery quantity
+Series strings
+Parallel strings
+```
+
+**Supported system voltages:**
+
+```text
+12 V    24 V    36 V    48 V
+```
+
+**Example architecture:**
+
+```text
+             BATTERY BANK
+                  │
+       ┌──────────┴──────────┐
+       │                     │
+   Series String 1       Series String 2
+       │                     │
+    4 × 12 V             4 × 12 V
+       │                     │
+       └──────────┬──────────┘
+                  │
+                48 V
+```
+
+**The engine distinguishes:**
+
+```text
+Calculated capacity
+Selected battery capacity
+Required series count
+Required parallel count
+Actual installed capacity
+```
+
+---
+
+## 8. Inverter Sizing
+
+The inverter engine determines the required rating for both continuous and surge duty.
+
+**Inputs:**
+
+```text
+Peak load
+Continuous load
+Surge load
+Motor starting requirements
+Design margin
+Output voltage
+Output frequency
+System voltage
+```
+
+**Outputs:**
+
+```text
+Minimum inverter rating
+Recommended inverter rating
+Required surge capability
+DC input current
+Operating voltage
+```
+
+---
+
+## 9. Cable Sizing
+
+The cable engine evaluates conductor adequacy for every circuit in the system.
+
+**Inputs:**
+
+```text
+Load current
+Cable length
+Conductor material
+System voltage
+Allowable voltage drop
+Cable resistance
+Cable cross-sectional area
+Installation conditions
+Temperature
+```
+
+**Outputs:**
+
+```text
+Calculated minimum cable size
+Selected cable size
+Estimated voltage drop
+Voltage-drop percentage
+Current carrying requirement
+```
+
+**Applied independently to:**
+
+```text
+Battery cables
+PV cables
+Inverter cables
+AC output cables
+Charge-controller cables
+Interconnects
+```
+
+---
+
+## 10. Voltage Drop
+
+Voltage drop is a standalone service so it can be reused by any engine.
+
+```text
+Cable Parameters
+      │
+      ▼
+Resistance
+      │
+      ▼
+Current
+      │
+      ▼
+Voltage Drop
+      │
+      ▼
+Voltage Drop %
+```
+
+The result reports both **absolute** and **percentage** voltage drop.
+
+---
+
+## 11. Charge Controller Sizing
+
+The controller engine selects an appropriate charge controller.
+
+**Inputs:**
+
+```text
+PV array power
+Battery voltage
+PV operating voltage
+PV current
+Charging current
+Controller efficiency
+Design margin
+Controller technology (MPPT / PWM)
+```
+
+**Outputs:**
+
+```text
+Required charging current
+Minimum controller rating
+Recommended controller rating
+PV voltage compatibility
+PV current compatibility
+```
+
+---
+
+## 12. Protection Sizing
+
+Protection is treated as a first-class engineering subsystem, not an afterthought.
+
+**Coverage:**
+
+```text
+Battery fuse / breaker
+PV fuse / breaker
+DC isolator
+AC breaker
+Surge protection (SPD)
+Over-current protection
+Short-circuit protection
+```
+
+**Selection criteria:**
+
+```text
+Operating current
+Expected fault current
+System voltage
+Device interrupt rating
+Continuous-duty requirements
+Design margin
+```
+
+---
+
+## 13. Bill of Materials
+
+The BOM engine converts engineering selections into a structured project material list.
+
+**Categories:**
+
+```text
+PV modules
+Batteries
+Inverter
+Charge controller
+DC breakers
+AC breakers
+Fuses
+SPDs
+Cables
+Connectors
+Busbars
+Enclosures
+Mounting hardware
+Earthing materials
+Monitoring equipment
+```
+
+**Each BOM item supports:**
+
+```text
+Category
+Description
+Manufacturer
+Part number
+Specification
+Quantity
+Unit cost
+Total cost
+Supplier
+Alternative
+Engineering notes
+```
+
+---
+
+## 14. Costing
+
+Costing converts the BOM into project-level financial information.
+
+```text
+Component Cost
+      │
+      ▼
+Quantity
+      │
+      ▼
+Extended Cost
+      │
+      ▼
+Subtotal
+      │
+      ├── Installation
+      ├── Transport
+      ├── Engineering
+      └── Other Costs
+      │
+      ▼
+Project Total
+```
+
+**Costing is strictly separate from engineering.** A price change must never affect a sizing result.
+
+---
+
+## 15. Engineering Validation
+
+Every calculation passes through validation before it is accepted.
+
+**Validation checks:**
+
+```text
+Required fields
+Numeric ranges
+Electrical limits
+System-voltage compatibility
+Component limits
+Design margins
+Unit consistency
+Invalid configurations
+Missing dependencies
+```
+
+```text
+PV Array
+   │
+   ▼
+Voltage Check
+   │
+   ├── PASS
+   └── FAIL
+        │
+        ▼
+   Validation Error
+```
+
+Validation never throws — it returns structured warnings and errors so the caller decides how to react.
+
+---
+
+## 16. Dashboard
+
+A project-level summary of audits and system designs.
+
+**Dashboard information:**
+
+```text
+Projects
+Audits
+Loads
+Daily Energy
+Audit Status
+Connected Load
+Essential Load
+System Summary
+Recent Audits
+Quick Actions
+```
+
+**Primary workflow actions:**
+
+```text
+New Load Audit
+Solar Sizing
+Battery Sizing
+Inverter Sizing
+```
+
+---
+
+## 17. Frontend Architecture
+
+The frontend follows a feature-oriented structure.
+
+```text
+src/
+├── features/
+│   ├── dashboard/
+│   ├── load-audit/
+│   ├── solar-sizing/
+│   ├── battery-sizing/
+│   ├── inverter-sizing/
+│   ├── cable-sizing/
+│   ├── protection/
+│   └── reports/
+│
+├── services/
+├── components/
+├── repositories/
+├── types/
+├── utils/
+└── app/
+```
+
+Feature modules **must not embed engineering formulas** inside UI components. They call services; services call engines.
+
+---
+
+## 18. Engineering / UI Separation
+
+```text
+┌─────────────────────────────┐
+│           UI                │
+│ React / Vite                │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│ Application Services        │
+│ Request / response mapping  │
+└──────────────┬──────────────┘
+               │
+               ▼
+┌─────────────────────────────┐
+│ Engineering Engine          │
+│ Pure calculations           │
+└──────────────┬──────────────┘
+               │
+      ┌────────┴────────┐
+      ▼                 ▼
+ Validation          Constants
+      │                 │
+      └────────┬────────┘
+               ▼
+┌─────────────────────────────┐
+│ Persistence                 │
+│ D1 / SQLite / repositories  │
+└─────────────────────────────┘
+```
+
+This makes engineering calculations testable without the browser or the database.
+
+---
+
+## 19. Backend Architecture
+
+The production backend runs on Cloudflare Workers.
+
+```text
+                 Internet
+                    │
+                    ▼
+             Cloudflare Worker
+                    │
+       ┌────────────┼────────────┐
+       │            │            │
+       ▼            ▼            ▼
+     Load         Solar        Battery
+     API           API           API
+       │            │            │
+       └────────────┼────────────┘
+                    │
+                    ▼
+             Engineering Core
+                    │
+                    ▼
+                   D1
+```
+
+**Cloudflare services used as needed:**
+
+| Service | Purpose |
+|---|---|
+| Workers | API + edge compute |
+| D1 | Structured application data |
+| R2 | Generated documents, large objects |
+| KV | Config, feature flags |
+| Queues | Background jobs |
+| Pages | Frontend hosting |
+
+---
+
+## 20. Data Model
+
+```text
+Users
+Clients
+Projects
+Audits
+Load Items
+Solar Arrays
+Batteries
+Inverters
+Cable Runs
+Protection Devices
+Calculation Results
+BOM Items
+Audit Logs
+```
+
+**Relationship:**
+
+```text
+Client
+  │
+  └── Projects
+        │
+        └── Audits
+              │
+              ├── Load Items
+              ├── Solar Configuration
+              ├── Battery Configuration
+              ├── Inverter Configuration
+              ├── Cable Runs
+              ├── Protection
+              ├── Calculations
+              └── BOM
+```
+
+---
+
+## 21. Audit Traceability
+
+Every result is traceable to its inputs, assumptions, and engine version.
+
+```text
+Audit
+ │
+ ├── Input Data
+ │
+ ├── Assumptions
+ │
+ ├── Calculation Version
+ │
+ ├── Calculation Result
+ │
+ ├── Selected Components
+ │
+ └── Validation Status
+```
+
+A calculation result retains its inputs and outputs so a report can be reproduced exactly, even after the engine evolves.
+
+---
+
+## 22. Calculation Result Format
+
+```json
+{
+  "calculationType": "solar-sizing",
+  "status": "valid",
+  "inputs": {},
+  "assumptions": {},
+  "calculations": {},
+  "result": {},
+  "warnings": [],
+  "errors": []
+}
+```
+
+The implementation uses TypeScript types (or equivalent schemas) to enforce this shape at compile time.
+
+---
+
+## 23. Units
+
+Engineering units are explicit and enforced in the engine layer.
+
+| Quantity | Unit |
+|---|---|
+| Voltage | V |
+| Current | A |
+| Power | W |
+| Energy | Wh / kWh |
+| Resistance | Ω |
+| Length | m |
+| Area | mm² |
+| Frequency | Hz |
+| Capacity | Ah |
+| Temperature | °C |
+
+Unit conversion happens in the engineering layer — **never** hidden inside UI components.
+
+---
+
+## 24. Design Margins
+
+Margins are explicit and named.
+
+```text
+Load design margin
+Battery sizing margin
+PV sizing margin
+Cable sizing margin
+Protection margin
+Thermal margin
+Inverter surge margin
+```
+
+A calculation always distinguishes:
+
+```text
+Calculated value
+Design value
+Selected component
+```
+
+**Example:**
+
+```text
+Calculated PV requirement:  3.42 kW
+Design requirement:         4.28 kW
+Selected PV array:          4.40 kW
+```
+
+---
+
+## 25. Testing Strategy
+
+```text
+Unit Tests
+    │
+    ▼
+Engineering Engine Tests
+    │
+    ▼
+Service Tests
+    │
+    ▼
+API Tests
+    │
+    ▼
+Integration Tests
+    │
+    ▼
+UI Tests
+```
+
+Engineering calculations receive **extensive** unit coverage — errors here propagate into real electrical systems.
+
+---
+
+## 26. Project Structure
+
+```text
+solaraudit/
+│
+├── src/
+│   ├── features/
+│   ├── components/
+│   ├── services/
+│   ├── repositories/
+│   ├── types/
+│   └── utils/
+│
+├── worker/
+│   ├── src/
+│   │   └── index.js
+│   ├── schema.sql
+│   └── wrangler.toml
+│
+├── docs/
+│   ├── engineering/
+│   ├── calculations/
+│   ├── api/
+│   └── deployment/
+│
+├── tests/
+│
+├── package.json
+└── README.md
+```
+
+---
+
+## 27. Development Workflow
+
+Every new engineering capability follows the same path:
+
+```text
+Define Requirement
+       │
+       ▼
+Define Input Schema
+       │
+       ▼
+Implement Calculation
+       │
+       ▼
+Add Validation
+       │
+       ▼
+Write Tests
+       │
+       ▼
+Expose Service/API
+       │
+       ▼
+Connect UI
+       │
+       ▼
+Persist Result
+       │
+       ▼
+Generate Report
+```
+
+**Rule:** a new capability is never implemented directly inside a page component.
+
+---
+
+## 28. Implementation Sequence
+
+Order follows the dependency chain from load data to full system design:
+
+```text
+01. Load Engine
+02. Energy Engine
+03. Solar Engine
+04. Battery Engine
+05. Inverter Engine
+06. Cable Engine
+07. Voltage-Drop Engine
+08. Charge-Controller Engine
+09. Protection Engine
+10. BOM Engine
+11. Costing Engine
+12. Reporting Engine
+```
+
+---
+
+## 29. Future Expansion
+
+```text
+Hybrid Solar Systems
+Grid-Tied Systems
+Off-Grid Systems
+Battery Energy Storage Systems
+Diesel Generator Integration
+Generator Sizing
+ATS Sizing
+Earthing Calculations
+Lightning Protection
+Cable Tray Sizing
+Transformer Sizing
+Three-Phase Systems
+Power Factor Analysis
+Harmonic Analysis
+Site Survey Management
+Mobile Data Collection
+Offline Mode
+PDF Engineering Reports
+Inventory Management
+Supplier Management
+Project Cost Estimation
+```
+
+---
+
+## 30. Engineering Principle
+
+SolarAudit is not a load calculator with a UI on top. It is an **engineering decision and audit platform**.
+
+```text
+FIELD DATA
+    │
+    ▼
+ENGINEERING INPUTS
+    │
+    ▼
+CALCULATIONS
+    │
+    ▼
+VALIDATION
+    │
+    ▼
+EQUIPMENT SELECTION
+    │
+    ▼
+BOM / COST
+    │
+    ▼
+ENGINEERING REPORT
+```
+
+Every recommendation is explainable from the underlying input data, assumptions, equations, component ratings, and validation rules.
+
+---
+
+## 31. Project Status
+
+SolarAudit is under active development.
+
+**Current priorities:**
+
+```text
+Load Audit
+Engineering Calculation Engines
+Dashboard
+API Architecture
+Cloudflare Worker Backend
+D1 Persistence
+Engineering Validation
+Reporting
+```
+
+The engineering calculation layer remains the core of the platform. The frontend, API, database, and reporting systems are built **around** it — never the other way around.
+
+---
+
+## License
+
+*(Add project license.)*
+
+## Contributing
+
+*(Add contribution guidelines.)*

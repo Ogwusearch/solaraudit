@@ -1,0 +1,12 @@
+name = "solaraudit-api"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "solaraudit"
+database_id = "273d82f2-6ad6-4454-8a72-a80646853961"
+
+[observability]
+enabled = true

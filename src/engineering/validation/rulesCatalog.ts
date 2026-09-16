@@ -1,0 +1,25 @@
+/**
+ * SolarAudit — Validation Engine: Rules Catalog
+ *
+ * The registry of rule codes the engine knows about. Used by
+ * validation.ts to reject unknown skipRules codes.
+ */
+
+import type { RuleCode } from "./types";
+
+export const ALL_RULE_CODES: ReadonlySet<RuleCode> = new Set<RuleCode>([
+  "VOLTAGE_BATTERY_INVERTER_MATCH",
+  "VOLTAGE_BATTERY_CONTROLLER_MATCH",
+  "PV_VOC_WITHIN_CONTROLLER",
+  "PV_ISC_WITHIN_CONTROLLER",
+  "CONTROLLER_OUTPUT_WITHIN_BATTERY_CHARGE_LIMIT",
+  "PV_ENERGY_MEETS_DAILY_REQUIREMENT",
+  "INVERTER_PEAK_WITHIN_BATTERY_DISCHARGE",
+  "CABLE_AMPACITY_SUFFICIENT",
+  "CABLE_VOLTAGE_DROP_WITHIN_TARGET",
+  "PROTECTION_CURRENT_SUFFICIENT",
+  "PROTECTION_VOLTAGE_SUFFICIENT",
+  "PROTECTION_INTERRUPT_SUFFICIENT",
+  "SYSTEM_VOLTAGES_CONSISTENT",
+  "PV_ARRAY_POWER_MATCHES_BATTERY_C_RATE",
+]);

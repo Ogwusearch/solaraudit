@@ -1,0 +1,50 @@
+{
+  "name": "solaraudit",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "worker:dev": "wrangler dev worker/src/index.js",
+    "worker:deploy": "wrangler deploy --config worker/wrangler.toml",
+    "test:load": "vitest run src/engineering/load",
+    "test:watch": "vitest",
+    "test:solar": "vitest run src/engineering/solar",
+    "test:energy": "vitest run src/engineering/energy",
+    "test:battery": "vitest run src/engineering/battery",
+    "test:inverter": "vitest run src/engineering/inverter",
+    "test:charge-controller": "vitest run src/engineering/charge-controller",
+    "test:cable": "vitest run src/engineering/cable",
+    "test:voltage-drop": "vitest run src/engineering/voltage-drop",
+    "test:protection": "vitest run src/engineering/protection",
+    "test:bom": "vitest run src/engineering/bom",
+    "test:costing": "vitest run src/engineering/costing",
+    "test:validation": "vitest run src/engineering/validation",
+    "test:units": "vitest run src/engineering/units",
+    "test:report": "vitest run src/engineering/report",
+    "test:load-audit": "vitest run src/features/load-audit"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "^22.20.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "jsdom": "^30.0.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.0"
+  },
+  "dependencies": {
+    "hono": "^4.13.7",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router-dom": "^7.18.3"
+  }
+}
