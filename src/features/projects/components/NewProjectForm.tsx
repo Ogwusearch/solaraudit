@@ -1,10 +1,13 @@
+
 /**
  * SolarAudit — Projects feature: New project form
  *
- * Presentational. No domain logic, no persistence.
+ * Presentational component.
+ * No domain logic.
+ * No persistence.
  */
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import type { FormValidationErrors, ProjectDraft } from "../types";
 
 export interface NewProjectFormProps {
@@ -15,15 +18,27 @@ export interface NewProjectFormProps {
   readonly onLoadSample?: () => void;
 }
 
-export function NewProjectForm(props: NewProjectFormProps) {
-  const { initialDraft, errors, disabled, onSubmit, onLoadSample } = props;
+export function NewProjectForm({
+  initialDraft,
+  errors,
+  disabled = false,
+  onSubmit,
+  onLoadSample,
+}: NewProjectFormProps) {
   const [draft, setDraft] = useState<ProjectDraft>(initialDraft);
 
-  const set = <K extends keyof ProjectDraft>(k: K, v: ProjectDraft[K]) =>
-    setDraft((d) => ({ ...d, [k]: v }));
+  const set = <K extends keyof ProjectDraft>(
+    key: K,
+    value: ProjectDraft[K],
+  ) => {
+    setDraft((current) => ({
+      ...current,
+      [key]: value,
+    }));
+  };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     await onSubmit(draft);
   };
 
@@ -37,11 +52,15 @@ export function NewProjectForm(props: NewProjectFormProps) {
           <input
             type="text"
             value={draft.name}
-            onChange={(e) => set("name", e.target.value)}
+            onChange={(event) => set("name", event.target.value)}
             placeholder="e.g. Off-grid home — Lagos"
             required
           />
-          {errors["name"] && <span role="alert">{errors["name"]}</span>}
+          {errors.name && (
+            <span role="alert">
+              {errors.name}
+            </span>
+          )}
         </label>
 
         <label>
@@ -49,10 +68,12 @@ export function NewProjectForm(props: NewProjectFormProps) {
           <input
             type="text"
             value={draft.clientName}
-            onChange={(e) => set("clientName", e.target.value)}
+            onChange={(event) => set("clientName", event.target.value)}
           />
-          {errors["clientName"] && (
-            <span role="alert">{errors["clientName"]}</span>
+          {errors.clientName && (
+            <span role="alert">
+              {errors.clientName}
+            </span>
           )}
         </label>
 
@@ -61,10 +82,12 @@ export function NewProjectForm(props: NewProjectFormProps) {
           <input
             type="text"
             value={draft.siteAddress}
-            onChange={(e) => set("siteAddress", e.target.value)}
+            onChange={(event) => set("siteAddress", event.target.value)}
           />
-          {errors["siteAddress"] && (
-            <span role="alert">{errors["siteAddress"]}</span>
+          {errors.siteAddress && (
+            <span role="alert">
+              {errors.siteAddress}
+            </span>
           )}
         </label>
 
@@ -73,10 +96,12 @@ export function NewProjectForm(props: NewProjectFormProps) {
           <input
             type="text"
             value={draft.auditorName}
-            onChange={(e) => set("auditorName", e.target.value)}
+            onChange={(event) => set("auditorName", event.target.value)}
           />
-          {errors["auditorName"] && (
-            <span role="alert">{errors["auditorName"]}</span>
+          {errors.auditorName && (
+            <span role="alert">
+              {errors.auditorName}
+            </span>
           )}
         </label>
 
@@ -84,13 +109,16 @@ export function NewProjectForm(props: NewProjectFormProps) {
           Notes
           <textarea
             value={draft.notes}
-            onChange={(e) => set("notes", e.target.value)}
+            onChange={(event) => set("notes", event.target.value)}
             rows={3}
           />
         </label>
 
         <div>
-          <button type="submit">Create project</button>
+          <button type="submit" disabled={disabled}>
+            Create project
+          </button>
+
           {onLoadSample && (
             <button type="button" onClick={onLoadSample}>
               Load sample

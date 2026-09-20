@@ -1,10 +1,12 @@
+
 /**
  * SolarAudit — Projects feature: Types
  *
- * Feature-local domain model. NOT an engineering engine input/output.
- * Projects are records — an id, a name, a client, a site, timestamps.
- * Engineering values (kWp, kWh, cost) are computed elsewhere and are
- * not stored on the Project itself.
+ * Feature-local domain model.
+ *
+ * Projects are records that identify an engineering/audit project.
+ * Engineering calculations such as kWp, kWh, battery capacity, cable
+ * sizing, protection, and costing are handled by the engineering layer.
  */
 
 export interface Project {
@@ -14,10 +16,20 @@ export interface Project {
   readonly siteAddress?: string;
   readonly auditorName?: string;
   readonly notes?: string;
-  readonly createdAt: string;      // ISO 8601
-  readonly updatedAt: string;      // ISO 8601
+
+  /** ISO 8601 timestamp */
+  readonly createdAt: string;
+
+  /** ISO 8601 timestamp */
+  readonly updatedAt: string;
 }
 
+/**
+ * Form state used when creating or editing a project.
+ *
+ * Draft fields are required because the form controls use strings.
+ * Persistence/application logic may normalize empty strings to undefined.
+ */
 export interface ProjectDraft {
   readonly name: string;
   readonly clientName: string;
@@ -27,9 +39,9 @@ export interface ProjectDraft {
 }
 
 /**
- * What the list shows. Derive this from the full Project when reading
- * from the repository. A future version may compute summary metrics by
- * querying downstream engines; today it is just the base record.
+ * Lightweight representation used by the project list.
+ *
+ * Derived from Project when loaded from the repository.
  */
 export interface ProjectSummary {
   readonly id: string;
@@ -39,15 +51,31 @@ export interface ProjectSummary {
   readonly updatedAt: string;
 }
 
+/**
+ * Data required by the projects list view.
+ */
 export interface ProjectsView {
   readonly projects: readonly ProjectSummary[];
   readonly loadedAt: string;
 }
 
+/**
+ * Field-level validation errors.
+ *
+ * Example:
+ *
+ * {
+ *   name: "Project name is required.",
+ *   clientName: "Client name is too long."
+ * }
+ */
 export interface FormValidationErrors {
   readonly [fieldKey: string]: string | undefined;
 }
 
+/**
+ * Projects feature lifecycle state.
+ */
 export type ProjectsStatus =
   | "idle"
   | "loading"
